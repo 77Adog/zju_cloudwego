@@ -18,15 +18,10 @@ jobs:
       - name: Update rust
         run: rustup update
 
-      - name: Go to the dictionary of myfind
-        run: cd hw1/myfind/
-
-      - name: Clean the previous build
-        run: cargo clean
-
-      - name: Build the project
-        run: cargo build
-
-      - name: Run the test
-        run: cargo test
+      - name: Go to the dictionary of myfind. Clean, build, test myfind
+        run: | 
+          cd hw1/myfind/
+          cargo clean
+          cargo build
+          cargo test
   
