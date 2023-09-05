@@ -10,4 +10,4 @@
 
 - `strcmp/` 中包含了课件第17页的练习的工程文件，实现了`fn compareString(x: &str, y: &str) -> bool`函数，判断字符串x是否比y字符串字典序更大，在main.rs中实现了一个测试脚本进行简单测试
 
-- 在本github仓库中设置好了github action，能实现在每次push新的commit后进行hw1的自动编译，将hw2的buffer和strcmp两个工程进行编译和运行测试脚本，将hw2的closure工程进行编译运行，因为验证是否运行正确的脚本在main函数中，直接运行即可。
+- 在本github仓库中设置好了github action，能实现在每次push新的commit后进行hw1的自动编译，将hw2的buffer和strcmp两个工程进行编译和运行测试脚本，将hw2的closure工程进行编译运行，因为验证是否运行正确的脚本在main函数中，直接运行即可。自动编译的脚本在仓库根目录的`.github/workflows/main.yml`中。
