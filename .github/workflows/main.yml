@@ -1,0 +1,32 @@
+
+name: myfind-ci
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update rust
+        run: rustup update
+
+      - name: Go to the dictionary of myfind
+        run: cd hw1/myfind/
+
+      - name: Clean the previous build
+        run: cargo clean
+
+      - name: Build the project
+        run: cargo build
+
+      - name: Run the test
+        run: cargo test
+  
