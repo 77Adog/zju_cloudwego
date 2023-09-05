@@ -43,5 +43,5 @@ jobs:
           cd hw2/strcmp/
           cargo clean
           cargo build
-          cargo run
+          cargo test
   
