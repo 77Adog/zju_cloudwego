@@ -9,7 +9,7 @@ fn main() {
     println!("Run the demo test that waits for network for 10s. You can use htop to check the CPU usage.");
     runtime::block_on(task::demo());
     if false {
-        // 消除没有运行test程序的warning所以有这个设计
+        // 消除没有运行test程序的warning所以有这个设计，若要验证输出测试的输出正确，可以将if条件改为true随后运行查看
         runtime::block_on(task::test_demo());
     }
 }

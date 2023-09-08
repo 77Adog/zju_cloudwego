@@ -56,6 +56,8 @@ pub async fn test_demo() {
 
 async fn test_single(_t: async_channel::Sender<()>, _test_id: i32) {
     async {}.await;
+    // 输出信息表明所有附属任务都被执行了
+    println!("test id: {}", _test_id);
     let mut _num = 0;
     for i in 0..1000000 {
         _num += i;
