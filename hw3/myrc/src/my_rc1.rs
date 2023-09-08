@@ -75,7 +75,9 @@ impl<T> Deref for Rc<T> {
 impl<T: fmt::Display> fmt::Display for Rc<T> {
 
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt::Display::fmt(&**self, f)
+        unsafe {
+            fmt::Display::fmt(&(self._ptr.as_ref().value), f)
+        }
     }
 }
 
