@@ -6,28 +6,14 @@ use std::task::Waker;
 // use std::task::RawWakerVTable;
 use std::task::Context;
 use std::sync::Condvar;
-use std::sync::Mutex;
 use std::task::Wake;
-use futures::future::BoxFuture;
+use std::sync::Mutex;
+use futures::FutureExt;
+use futures::future::LocalBoxFuture;
 use std::collections::VecDeque;
 
+use rand::Rng;
 
-// fn dummy_waker() -> Waker {
-//     static DATA: () = ();
-//     unsafe {Waker::from_raw(RawWaker::new(&DATA, &VTABLE))}
-// }
-
-// const VTABLE: RawWakerVTable = RawWakerVTable::new(vtable_clone, vtable_wake, vtable_wake_by_ref, vtable_drop);
-
-// unsafe fn vtable_clone(_p: *const()) -> RawWaker {
-//     RawWaker::new(_p, &VTABLE)
-// }
-
-// unsafe fn vtable_wake(_p: *const ()) {}
-
-// unsafe fn vtable_wake_by_ref(_p: * const ()) {}
-
-// unsafe fn vtable_drop(_p: * const ()) {}
 
 enum State {
     Empty,
@@ -36,20 +22,20 @@ enum State {
 }
 
 struct Signal {
-    state: Mutex<State>,
+    state: std::sync::Mutex<State>,
     cond: Condvar,
 }
 
 impl Signal {
 
     fn new() -> Signal {
-        Signal { state: Mutex::new(State::Notified), cond: Condvar::new() }
+        Signal { state: std::sync::Mutex::new(State::Notified), cond: Condvar::new() }
     }
     
     fn wait(&self) {
         let mut state = self.state.lock().unwrap();
         match *state {
-            State::Notified => *state = State::Empty,
+            State::Notified => {*state = State::Empty; },
             State::Waiting => {
                 panic!("multiple wait");
             }
@@ -82,7 +68,12 @@ impl Wake for Signal {
 }
 
 scoped_tls::scoped_thread_local!(static SIGNAL: Arc<Signal>);
-scoped_tls::scoped_thread_local!(static RUNNABLE: Mutex<VecDeque<Arc<Task>>>);
+scoped_tls::scoped_thread_local!(static RUNNABLE: Arc<TwoVD>);
+
+struct TwoVD {
+    vd1: Mutex<VecDeque<Arc<Task>>>,
+    vd2: Mutex<VecDeque<Arc<Task>>>,
+}
 
 pub fn block_on<F: Future>(future: F)-> F::Output {
     let mut fut = std::pin::pin!(future);
@@ -91,18 +82,29 @@ pub fn block_on<F: Future>(future: F)-> F::Output {
 
     let mut cx = Context::from_waker(&waker);
 
-    let runnable: Mutex<VecDeque<Arc<Task>>> = Mutex::new(VecDeque::with_capacity(1024));
+    let runnable: Arc<TwoVD> = Arc::new(TwoVD { vd1: Mutex::new(VecDeque::new()), vd2: Mutex::new(VecDeque::new()) });
     SIGNAL.set(&signal, || {
         RUNNABLE.set(&runnable, || {
             loop {
                 if let std::task::Poll::Ready(output) = fut.as_mut().poll(&mut cx) {
                     return output;
                 }
-                while let Some(task) = runnable.lock().unwrap().pop_front() {
+                // 创建一个线程，将所有的附属task进行多线程处理
+                let runnable1 = runnable.clone();
+                let handle = std::thread::spawn(move || {
+                    while let Some(task) = (*runnable1).vd2.lock().unwrap().pop_front() {
+                        let waker = Waker::from(task.clone());
+                        let mut cx = Context::from_waker(&waker);
+                        let _poll_result = task.future.borrow_mut().as_mut().poll(&mut cx);
+                    }
+                });
+                while let Some(task) = (*runnable).vd1.lock().unwrap().pop_front() {
                     let waker = Waker::from(task.clone());
                     let mut cx = Context::from_waker(&waker);
-                    let _ = task.future.borrow_mut().as_mut().poll(&mut cx);
+                    let _poll_result = task.future.borrow_mut().as_mut().poll(&mut cx);
                 }
+                // 等待多线程执行结束
+                handle.join().unwrap();
                 signal.wait();
             }
         })
@@ -110,7 +112,7 @@ pub fn block_on<F: Future>(future: F)-> F::Output {
 }
 
 struct Task {
-    future: RefCell<BoxFuture<'static, ()>>,
+    future: RefCell<LocalBoxFuture<'static, ()>>,
     signal: Arc<Signal>,
 }
 
@@ -119,8 +121,32 @@ unsafe impl Sync for Task {}
 
 impl Wake for Task {
     fn wake(self: Arc<Self>) {
-        RUNNABLE.with(|runnable| runnable.lock().unwrap().push_back(self.clone()));
-        
+        let mut rng =rand::thread_rng();
+        // 生成随机数，由随机数决定wake以后进入哪个运行队列
+        let num: usize = rng.gen();
+        match num % 2 {
+            0 => {RUNNABLE.with(|runnable| (*runnable).vd1.lock().unwrap().push_back(self.clone()));},
+            _ => {RUNNABLE.with(|runnable| (*runnable).vd2.lock().unwrap().push_back(self.clone()));}
+        }
+        // RUNNABLE.with(|runnable| runnable.lock().unwrap().push_back(self.clone()));
         self.signal.notify();
+    }
+}
+
+pub fn spawn<F: Future<Output = ()> + 'static>(fut: F) {
+    let t = Arc::new(Task {
+        future: RefCell::new(fut.boxed_local()),
+        signal: Arc::new(Signal::new()),
+    });
+    // RUNNABLE.with(|runnable| {
+    //     let mut task_queue = runnable.lock().unwrap();
+    //     task_queue.push_back(t);
+    // });
+    let mut rng =rand::thread_rng();
+    // 生成随机数，由随机数决定wake以后进入哪个运行队列
+    let num: usize = rng.gen();
+    match num % 2 {
+        0 => {RUNNABLE.with(|runnable| (*runnable).vd1.lock().unwrap().push_back(t));},
+        _ => {RUNNABLE.with(|runnable| (*runnable).vd2.lock().unwrap().push_back(t));}
     }
 }

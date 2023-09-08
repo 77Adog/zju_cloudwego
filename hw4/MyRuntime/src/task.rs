@@ -18,14 +18,17 @@ pub async fn demo() {
         tx.send_blocking(())
     });
     let _ = rx.recv().await;
-    println!("hello world!");
+    println!("hello world: ");
 }
 
 pub async fn demo1() {
     let (tx, rx) = async_channel::bounded(1);
-    async_std::task::spawn(demo2(tx, 2));
+    let (tx1, rx1) = async_channel::bounded(1);
+    super::runtime::spawn(demo2(tx, 2));
+    super::runtime::spawn(demo2(tx1, 3));
     println!("hello world: 1");
     let _ = rx.recv().await;
+    let _ = rx1.recv().await;
 }
 
 async fn demo2(tx: async_channel::Sender<()>, i: i32) {
@@ -35,7 +38,7 @@ async fn demo2(tx: async_channel::Sender<()>, i: i32) {
 
 pub async fn test_demo() {
     // 可以修改测试规模
-    let test_size = 100000;
+    let test_size = 10000;
     let mut vec_sender: Vec<async_channel::Sender<()>> = Vec::new();
     let mut vec_receiver: Vec<async_channel::Receiver<()>> = Vec::new();
     for _i in 0..test_size {
@@ -43,10 +46,20 @@ pub async fn test_demo() {
         vec_sender.push(tx);
         vec_receiver.push(rx);
     }
-    for _i in 0..test_size {
-        async_std::task::spawn(demo2(vec_sender.pop().unwrap(), _i));
+    for i in 0..test_size {
+        super::runtime::spawn(test_single(vec_sender.pop().unwrap(), i) );
     }
     for _i in 0..test_size {
         let _ = (vec_receiver.pop()).unwrap().recv().await;
     }
+}
+
+async fn test_single(_t: async_channel::Sender<()>, _test_id: i32) {
+    async {}.await;
+    let mut _num = 0;
+    for i in 0..1000000 {
+        _num += i;
+        _num -= i;
+    }
+    async {}.await;
 }
