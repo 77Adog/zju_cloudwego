@@ -10,7 +10,7 @@ struct RcBox<T> {
 }
 
 pub struct Rc<T> {
-    _ptr: *mut RcBox<T>
+    _ptr: ptr::NonNull<RcBox<T>>
 }
 
 impl<T> Rc<T> {
@@ -19,7 +19,7 @@ impl<T> Rc<T> {
             RcBox { strong: Cell::new(1), value: value }
         );
         let rc = Rc {
-            _ptr: &mut *rc_box
+            _ptr: ptr::NonNull::<RcBox<T>>::new(&mut *rc_box).unwrap()
         };
         mem::forget(rc_box);
         rc
@@ -31,7 +31,7 @@ impl<T> Rc<T> {
 
     fn inner(&self) -> &RcBox<T> {
         unsafe {
-            &*self._ptr
+            self._ptr.as_ref()   
         }
     }
 
@@ -58,7 +58,7 @@ impl<T> Drop for Rc<T> {
         self.dec_strong();
         if self.get_strong() == 0 {
             unsafe {
-                mem::drop(ptr::read(&(*self._ptr).value));
+                mem::drop(ptr::read(self._ptr.as_ptr()));
             }
         }
     }
