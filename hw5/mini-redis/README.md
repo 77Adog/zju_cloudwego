@@ -1,7 +1,6 @@
 # mini-redis
 
-本次实验实现了一个mini-redis的客户端和服务端，支持键和值的类型都是字符串的kv数据库，其支持`get, set, del, ping, subscribe, publish`几种方法。**本人尝试在中间件中实现一个敏感词“傻逼”的过滤器，但是由于中间件封装过好，所以在中间件中难以实现过滤，所以在中间件中判断存在“傻逼”一词直接panic**
-
+本次实验实现了一个mini-redis的客户端和服务端，支持键和值的类型都是字符串的kv数据库，其支持`get, set, del, ping, subscribe, publish`几种方法。并使用中间件对命令进行过滤，本次实验中为敏感词检测，检测到敏感词“傻逼”后会阻止命令执行并返回错误信息。信息格式在readme末尾
 ## 编译运行的方法
 
 在工程目录下运行如下命令编译
@@ -145,3 +144,13 @@ No subscriber found
 ## exit
 
 输入该指令退客户端
+
+## 敏感词过滤
+
+```s
+mini-redis>  set 123 傻逼
+2023-09-11T17:09:13.997962Z ERROR client: Application(ApplicationError { kind: ApplicationErrorKind(0), message: "命令中有敏感词'傻逼'" })
+mini-redis>  get 123
+2023-09-11T17:09:18.116990Z  INFO mini_redis: Request took 2ms
+The key: 123 is not in the database
+```

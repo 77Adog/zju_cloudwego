@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::{Sender, Receiver};
+use anyhow::Error;
 
 pub struct SBox {
 	kv_pairs: HashMap<String, String>,
@@ -198,7 +199,7 @@ where
     Req: std::fmt::Debug + Send + 'static,
     S: Send + 'static + volo::Service<Cx, Req> + Sync,
     S::Response: std::fmt::Debug,
-    S::Error: std::fmt::Debug + From<S::Error>,
+    S::Error: std::fmt::Debug + From<Error>,
     Cx: Send + 'static,
 {
     async fn call(&self, cx: &mut Cx, req: Req) -> Result<S::Response, S::Error> {
@@ -219,8 +220,8 @@ where
 			tracing::info!("Request took {}ms", now.elapsed().as_millis());	
 			return resp;
 		}
-		panic!("命令中有敏感词“傻逼");
-		
+		// panic!("命令中有敏感词“傻逼");
+		Err(S::Error::from(Error::msg("命令中有敏感词'傻逼'")))
     }
 }
 
