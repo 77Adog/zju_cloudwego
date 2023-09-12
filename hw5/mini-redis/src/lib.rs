@@ -1,28 +1,26 @@
 #![feature(impl_trait_in_assoc_type)]
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::RwLock;
 use tokio::sync::broadcast;
-use tokio::sync::broadcast::{Sender, Receiver};
+
+
 use anyhow::Error;
+
+pub const DEFAULT_ADDR: &str = "127.0.0.1:8080";
 
 pub struct SBox {
 	kv_pairs: HashMap<String, String>,
-	channels: HashMap<String, Sender<String>>,
-}
-
-pub struct sb_struct {
-	sb: RwLock<RefCell<SBox>>,
+	channels: HashMap<String, broadcast::Sender<String>>,
 }
 
 pub struct S {
-	sbs: sb_struct,
+	sb: RwLock<SBox>,
 }
 
 impl S {
 	pub fn new() -> S {
 		S {
-			sbs: sb_struct {sb: RwLock::new(RefCell::new(SBox { kv_pairs: HashMap::new(), channels: HashMap::new()}))}
+			sb: RwLock::new(SBox{kv_pairs: HashMap::new(), channels: HashMap::new()})
 		}
 	}
 }
@@ -37,7 +35,7 @@ impl volo_gen::volo::example::ItemService for S {
 		match _req.opcode {
 			0 => {
 				let key: String = _req.key_channal.into();
-				match self.sbs.sb.read().unwrap().borrow().kv_pairs.get(&key) {
+				match self.sb.read().unwrap().kv_pairs.get(&key) {
 					Some(value) => {
 						resp.opcode = 0;
 						resp.value_message = value.clone().into();
@@ -54,7 +52,7 @@ impl volo_gen::volo::example::ItemService for S {
 				let val: String = _req.value_message.into();
 				let mut is_in: bool = false;
 				{
-					match self.sbs.sb.read().unwrap().borrow().kv_pairs.get(&key) {
+					match self.sb.read().unwrap().kv_pairs.get(&key) {
 						Some(_) => {
 							is_in = true;
 						},
@@ -68,15 +66,15 @@ impl volo_gen::volo::example::ItemService for S {
 					resp.success = false;
 				}
 				else {
-					self.sbs.sb.write().unwrap().borrow_mut().kv_pairs.insert(key, val);
+					self.sb.write().unwrap().kv_pairs.insert(key, val);
 					resp.opcode = 1;
 					resp.success = true;
 				}
 			},
 			2 => {
 				let key: String = _req.key_channal.into();
-				match self.sbs.sb.write().unwrap().borrow_mut().kv_pairs.remove(&key) {
-					Some(v) => {
+				match self.sb.write().unwrap().kv_pairs.remove(&key) {
+					Some(_v) => {
 						resp.opcode = 2;
 						resp.success = true;
 					},
@@ -92,16 +90,16 @@ impl volo_gen::volo::example::ItemService for S {
 			},
 			4 => {
 				let key: String = _req.key_channal.into();
-				let (mut tx, mut rx) = broadcast::channel(16);
+				let (mut _tx, mut rx) = broadcast::channel(16);
 				let mut has_channel: bool = false;
 				{
-					match self.sbs.sb.read().unwrap().borrow().channels.get(&key) {
+					match self.sb.read().unwrap().channels.get(&key) {
 						Some(get_tx) => {
 							has_channel = true;
 							rx = get_tx.subscribe();
 						},
 						None => {
-							has_channel = false;
+							
 						},
 					}
 				}
@@ -113,13 +111,13 @@ impl volo_gen::volo::example::ItemService for S {
 							resp.value_message = m.clone().into();
 							resp.success = true;
 						},
-						Err(e) => {
+						Err(_e) => {
 							resp.opcode = 4;
 							resp.success = false;
 						}
 					}
 				} else {
-					self.sbs.sb.write().unwrap().borrow_mut().channels.insert(key, tx);
+					self.sb.write().unwrap().channels.insert(key, _tx);
 					let mes = rx.recv().await;
 					match mes {
 						Ok(m) => {
@@ -127,7 +125,7 @@ impl volo_gen::volo::example::ItemService for S {
 							resp.value_message = m.clone().into();
 							resp.success = true;
 						},
-						Err(e) => {
+						Err(_e) => {
 							resp.opcode = 4;
 							resp.success = false;
 						}
@@ -136,7 +134,7 @@ impl volo_gen::volo::example::ItemService for S {
 			}
 			5 => {
 				let key: String = _req.key_channal.into();
-				if let Some(tx) = self.sbs.sb.read().unwrap().borrow().channels.get(&key) {
+				if let Some(tx) = self.sb.read().unwrap().channels.get(&key) {
 					let info = tx.send(_req.value_message.into_string());
 					match info {
 						Ok(num) => {

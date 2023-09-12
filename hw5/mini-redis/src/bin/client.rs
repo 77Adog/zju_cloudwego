@@ -5,14 +5,14 @@ use mini_redis::LogLayer;
 use std::io;
 use std::io::Write;
 // use volo_gen::volo::example::{GetItemResponse, get_item};
-use mini_redis::{S};
+// use mini_redis::{S};
 
-static mut addr_str: String = String::new();
+static mut ADDR_STR: String = String::new();
 
 lazy_static! {
     static ref CLIENT: volo_gen::volo::example::ItemServiceClient = {
         unsafe {
-            let addr: SocketAddr = addr_str.parse().unwrap();
+            let addr: SocketAddr = ADDR_STR.parse().unwrap();
             volo_gen::volo::example::ItemServiceClientBuilder::new("volo-example")
                 .layer_outer(LogLayer)
                 .address(addr)
@@ -25,7 +25,7 @@ lazy_static! {
 async fn main() {
     // 获取命令行参数，其为server的IP地址
     let args: Vec<String> = env::args().collect();
-    unsafe { addr_str = args[1].clone(); }
+    unsafe { ADDR_STR = args[1].clone(); }
     tracing_subscriber::fmt::init();
 
     // 判断当前是否在subscribe状态，若在，则会直接进入无限循环，监听publish程序
