@@ -55,7 +55,7 @@ async fn main() {
             println!("error: The command is empty");
             continue;
         }
-        let mut req = volo_gen::volo::example::GetItemRequest { opcode: 0, key_channal: " ".into(), value_message: " ".into() };
+        let mut req = volo_gen::volo::example::GetItemRequest { opcode: 0, key_channal: " ".into(), value_message: "pong".into() };
         // 判断输入的命令，设置req
         if command[0] == "exit".to_string() {
             // 退出
@@ -93,6 +93,10 @@ async fn main() {
         else if command[0] == "ping".to_string() {
             // ping命令
             req.opcode = 3;
+            // 要是有message要返回message
+            if command.len() > 1 {
+                req.value_message = command[1].clone().into();
+            }
         }
         else if command[0] == "subscribe".to_string() {
             if command.len() < 2 {
@@ -148,7 +152,7 @@ async fn main() {
                 }
                 if info.opcode == 3 {
                     if info.success {
-                        println!("pong");
+                        println!("{}", info.value_message.clone().to_string());
                     } else {
                         println!("The connect is fail");
                     }

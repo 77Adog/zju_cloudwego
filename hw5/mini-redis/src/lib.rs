@@ -86,6 +86,7 @@ impl volo_gen::volo::example::ItemService for S {
 			},
 			3 => {
 				resp.opcode = 3;
+				resp.value_message = _req.value_message.clone();
 				resp.success = true;
 			},
 			4 => {

@@ -90,12 +90,26 @@ The key: 456 is not found in the database
 
 ## ping
 
-若连接成功，则输出"pong"，若连接已经失效，则直接报error
+用法
+```
+ping [message]
+```
+
+若连接成功，且没有指定输出内容，则输出"pong"，若连接已经失效，则直接报error
 ```s
 mini-redis>  ping    
 2023-09-11T16:45:51.690397Z  INFO mini_redis: Request took 1ms
 pong
 ```
+
+若指定输出内容，则会把输出内容输出
+```s
+mini-redis>  ping 123
+2023-09-12T13:12:47.359970Z  INFO mini_redis: Request took 1ms
+123
+```
+
+
 
 ## subscribe
 
