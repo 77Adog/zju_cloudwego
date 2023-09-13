@@ -1,0 +1,17 @@
+[package]
+name = "http"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+volo-gen = { path = "../mini-redis/volo-gen" }
+mini-redis = { path = "../mini-redis" }
+tokio = { version = "1.32.0", features = ["full"] }
+reqwest = "0.11.20"
+tracing-subscriber = "0.3.17"
+axum = "0.6.20"
+serde = "1.0.188"
+router = "0.6.0"
+tracing = "0.1.37"
